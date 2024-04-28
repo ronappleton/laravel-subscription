@@ -1,0 +1,35 @@
+{
+    "name": "ronappleton/laravel-subscriptions",
+    "description": "A Subscription Package for Laravel",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Appleton\\Subscriptions\\": "src/",
+            "Tests\\": "tests/",
+            "Database\\Factories\\": "database/factories/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ron Appleton",
+            "email": "ron.appleton@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ronappleton/laravel-wallet": "^1.0",
+        "spatie/test-time": "^1.3"
+    },
+    "require-dev": {
+        "orchestra/testbench": "9.*",
+        "laravel/framework": "11.*",
+        "laravel/pint": "dev-main",
+        "larastan/larastan": "2.x-dev"
+    },
+    "scripts": {
+        "pint": "vendor/bin/pint",
+        "test": "vendor/bin/phpunit",
+        "stan": "vendor/bin/phpstan analyse"
+    }
+}
