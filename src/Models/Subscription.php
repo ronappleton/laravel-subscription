@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Appleton\Subscriptions\Models;
 
 use Appleton\Subscriptions\Contracts\SubscriptionAction;
+use Appleton\Subscriptions\Enums\PaymentStatus;
 use Appleton\Subscriptions\Enums\TimePeriod;
 use Appleton\Subscriptions\Enums\Status;
 use Appleton\Subscriptions\Exceptions\SubscriptionAction as SubscriptionActionException;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property-read int $id
@@ -102,24 +104,29 @@ class Subscription extends Model
         'paused_at',
     ];
 
+
     /**
-     * @var array<string, string>
+     * @return array<string, string>
      */
-    protected $casts = [
-        'subscription_period' => TimePeriod::class,
-        'subscription_period_multiplier' => 'int',
-        'payment_period' => TimePeriod::class,
-        'payment_frequency_multiplier' => 'int',
-        'fixed_day_of_month' => 'int',
-        'allow_fixed_day_change' => 'bool',
-        'allow_pause' => 'bool',
-        'allow_cancel' => 'bool',
-        'advanced_warning_days' => 'int',
-        'retry_frequency_days' => 'int',
-        'max_retries' => 'int',
-        'status' => Status::class,
-        'paused_at' => 'datetime',
-    ];
+    public function casts(): array
+    {
+        return [
+            'amount' => 'double',
+            'subscription_period' => TimePeriod::class,
+            'subscription_period_multiplier' => 'int',
+            'payment_period' => TimePeriod::class,
+            'payment_frequency_multiplier' => 'int',
+            'fixed_day_of_month' => 'int',
+            'allow_fixed_day_change' => 'bool',
+            'allow_pause' => 'bool',
+            'allow_cancel' => 'bool',
+            'advanced_warning_days' => 'int',
+            'retry_frequency_days' => 'int',
+            'max_retries' => 'int',
+            'status' => Status::class,
+            'paused_at' => 'datetime',
+        ];
+    }
 
     protected static function newFactory(): SubscriptionFactory
     {
@@ -178,7 +185,7 @@ class Subscription extends Model
      */
     public function scopeForDay(Builder $query): Builder
     {
-        return $query->where('fixed_day_of_month', now()->day);
+        return $query->where('fixed_day_of_month', Carbon::now()->day);
     }
 
     /**
@@ -206,6 +213,70 @@ class Subscription extends Model
             ->whereRaw("advanced_warning_days + $day = fixed_day_of_month"); // Must be the day of the month
     }
 
+//    /**
+//     * @param Builder<SubscriptionLog> $query
+//     *
+//     * @return Builder<SubscriptionLog>
+//     */
+//    public function scopeUnpaidLogsThisMonth(Builder $query): Builder
+//    {
+//        return $query->where('status', PaymentStatus::UNPAID->value)
+//            ->where(function ($query) {
+//                $query->whereMonth('created_at', '=', Carbon::now()->month)
+//                    ->orWhere(function ($query) {
+//                        $query->whereMonth('created_at', '=', Carbon::now()->subMonth()->month)
+//                            ->whereRaw("strftime('%d', created_at) >= strftime('%d', date('now', '-' || fixed_day_of_month || ' days'))");
+//                    });
+//            });
+//    }
+
+    /**
+     * @param Builder<Subscription> $query
+     *
+     * @return Builder<Subscription>
+     */
+    public function scopeFailedPaymentsLastMonth(Builder $query): Builder
+    {
+        return $query->whereHas('logs', function ($query) {
+            $query->where('status', PaymentStatus::UNPAID->value)
+                ->whereBetween('created_at', [Carbon::now()->subMonth(), Carbon::now()]);
+        })->whereDoesntHave('logs', function ($query) {
+            $query->where('status', PaymentStatus::PAID->value)
+                ->where('created_at', '>', Carbon::now()->subMonth());
+        });
+    }
+
+    /**
+     * @param Builder<Subscription> $query
+     *
+     * @return Builder<Subscription>
+     */
+    public function scopeUnpaidLogsNotEqualToMaxRetries(Builder $query): Builder
+    {
+        return $query->whereHas('logs', function ($query) {
+            $query->select(DB::raw('subscription_id, count(*) as unpaid_count'))
+                ->where('status', PaymentStatus::UNPAID->value)
+                ->groupBy('subscription_id')
+                ->havingRaw('count(*) < max_retries');
+        });
+    }
+
+    /**
+     * @param Builder<Subscription> $query
+     *
+     * @return Builder<Subscription>
+     */
+    public function scopeRetryFrequencyDaysSinceLastUnpaidLog(Builder $query): Builder
+    {
+        $now = Carbon::now()->format('Y-m-d H:i:s');
+
+        return $query->whereHas('logs', function ($query) use ($now) {
+            $query->where('status', PaymentStatus::UNPAID->value)
+                ->whereRaw("created_at = datetime('" . $now . "', '-' || retry_frequency_days || ' days')")
+                ->latest();
+        });
+    }
+
     /**
      * @param Builder<Subscription> $query
      *
@@ -213,13 +284,11 @@ class Subscription extends Model
      */
     public function scopeForRetry(Builder $query): Builder
     {
-        return $query
-            ->where('status', '=', 'active')
+        return $query->where('status', Status::ACTIVE->value)
             ->where('max_retries', '>', 0)
-            ->where('retries', '<', $this->max_retries)
-            ->whereHas('logs', function ($query) {
-                $query->failed()->ageInDays($this->retry_frequency_days);
-            });
+            ->failedPaymentsLastMonth()
+            ->unpaidLogsNotEqualToMaxRetries()
+            ->retryFrequencyDaysSinceLastUnpaidLog();
     }
 
     public function canPause(): bool

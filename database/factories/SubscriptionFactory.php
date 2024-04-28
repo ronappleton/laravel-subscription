@@ -36,7 +36,7 @@ class SubscriptionFactory extends Factory
             'payee_id' => $this->faker->randomNumber(),
             'payee_type' => $this->faker->word(),
             'currency' => $this->faker->word(),
-            'amount' => $this->faker->randomFloat(),
+            'amount' => 10.00,
 
             'subscription_period' => TimePeriod::randomValue(),
             'subscription_period_multiplier' => 1,

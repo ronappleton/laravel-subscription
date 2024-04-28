@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->decimal('amount', 18, 10);
             $table->enum('status', PaymentStatus::values())->default('unpaid');
             $table->timestamp('created_at');
+            $table->softDeletes();
 
             $table->foreign('subscription_id')
                 ->references('id')

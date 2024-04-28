@@ -32,12 +32,12 @@ class ForWarningScopeTest extends TestCase
 
     public function testForWarningDoesNotIncludeASubscriptionWhenItIsBeforeAdvancedWarningDays(): void
     {
-        TestTime::freeze(Carbon::parse('2021-01-01'));
+        TestTime::freeze(Carbon::parse('2021-01-10'));
 
         Subscription::factory()->create([
             'status' => Status::ACTIVE,
             'advanced_warning_days' => 3,
-            'fixed_day_of_month' => Carbon::now()->addDays(4)->day,
+            'fixed_day_of_month' => 14,
         ]);
 
         $subscriptions = Subscription::forWarning()->get();
@@ -52,7 +52,7 @@ class ForWarningScopeTest extends TestCase
         Subscription::factory()->create([
             'status' => Status::ACTIVE,
             'advanced_warning_days' => 3,
-            'fixed_day_of_month' => Carbon::now()->addDays(2)->day,
+            'fixed_day_of_month' => 3,
         ]);
 
         $subscriptions = Subscription::forWarning()->get();
@@ -60,7 +60,7 @@ class ForWarningScopeTest extends TestCase
         $this->assertCount(0, $subscriptions);
     }
 
-    public function testForWarningDoesIncludesASubscriptionBecauseItIsAdvancedWarningDays(): void
+    public function testForWarningDoesIncludesASubscriptionBecauseItIsAdvancedWarningDaysExactly(): void
     {
         TestTime::freeze(Carbon::parse('2021-01-01'));
 
