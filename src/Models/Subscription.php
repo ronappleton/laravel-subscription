@@ -9,6 +9,7 @@ use Appleton\Subscriptions\Enums\PaymentStatus;
 use Appleton\Subscriptions\Enums\TimePeriod;
 use Appleton\Subscriptions\Enums\Status;
 use Appleton\Subscriptions\Exceptions\SubscriptionAction as SubscriptionActionException;
+use Appleton\Subscriptions\Models\Concerns\HasStatus;
 use Appleton\Subscriptions\Observers\SubscriptionObserver;
 use Carbon\Carbon;
 use Database\Factories\SubscriptionFactory;
@@ -49,10 +50,7 @@ use Illuminate\Support\Facades\DB;
  * @property int $retry_frequency_days
  * @property int $max_retries
  *
- * @property Status $status
- *
  * @property Carbon|null $deleted_at
- * @property Carbon|null $paused_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  *
@@ -60,15 +58,18 @@ use Illuminate\Support\Facades\DB;
  * @property Model $payee
  * @property SubscriptionLog[] $logs
  * @method static Builder forDay()
- * @method static Builder status(Status $status)
  * @method static Builder forWarning()
  * @method static Builder forRetry()
+ * @method static Builder failedPaymentsLastMonth()
+ * @method static Builder unpaidLogsNotEqualToMaxRetries()
+ * @method static Builder retryFrequencyDaysSinceLastUnpaidLog()
  */
 #[ObservedBy(SubscriptionObserver::class)]
 class Subscription extends Model
 {
     use SoftDeletes;
     use HasFactory;
+    use HasStatus;
 
     /**
      * @var array<int, string>
@@ -102,6 +103,10 @@ class Subscription extends Model
         'status',
 
         'paused_at',
+        'cancelled_at',
+        'ended_at',
+        'suspended_at',
+        'activated_at',
     ];
 
 
@@ -125,6 +130,10 @@ class Subscription extends Model
             'max_retries' => 'int',
             'status' => Status::class,
             'paused_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'ended_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'activated_at' => 'datetime',
         ];
     }
 
@@ -133,19 +142,17 @@ class Subscription extends Model
         return SubscriptionFactory::new();
     }
 
+    /**
+     * @throws SubscriptionActionException
+     * @throws BindingResolutionException
+     */
     public function getAction(): SubscriptionAction
     {
         if (!class_exists($this->action_class)) {
             SubscriptionActionException::notFound($this->action_class);
         }
 
-        $actionClass = null;
-
-        try {
-            $actionClass = app()->make($this->action_class);
-        } catch (BindingResolutionException $e) {
-            SubscriptionActionException::couldNotBeBuilt($this->action_class, $e->getMessage());
-        }
+        $actionClass = app()->make($this->action_class);
 
         if (!$actionClass instanceof SubscriptionAction) {
             SubscriptionActionException::notAnAction($this->action_class);
@@ -193,16 +200,6 @@ class Subscription extends Model
      *
      * @return Builder<Subscription>
      */
-    public function scopeStatus(Builder $query, Status $status): Builder
-    {
-        return $query->where('status', $status->value);
-    }
-
-    /**
-     * @param Builder<Subscription> $query
-     *
-     * @return Builder<Subscription>
-     */
     public function scopeForWarning(Builder $query): Builder
     {
         $day = Carbon::now()->day;
@@ -212,23 +209,6 @@ class Subscription extends Model
             ->where('advanced_warning_days', '>', 0) // Advanced Warnings must be enabled (>0)
             ->whereRaw("advanced_warning_days + $day = fixed_day_of_month"); // Must be the day of the month
     }
-
-//    /**
-//     * @param Builder<SubscriptionLog> $query
-//     *
-//     * @return Builder<SubscriptionLog>
-//     */
-//    public function scopeUnpaidLogsThisMonth(Builder $query): Builder
-//    {
-//        return $query->where('status', PaymentStatus::UNPAID->value)
-//            ->where(function ($query) {
-//                $query->whereMonth('created_at', '=', Carbon::now()->month)
-//                    ->orWhere(function ($query) {
-//                        $query->whereMonth('created_at', '=', Carbon::now()->subMonth()->month)
-//                            ->whereRaw("strftime('%d', created_at) >= strftime('%d', date('now', '-' || fixed_day_of_month || ' days'))");
-//                    });
-//            });
-//    }
 
     /**
      * @param Builder<Subscription> $query
@@ -291,80 +271,15 @@ class Subscription extends Model
             ->retryFrequencyDaysSinceLastUnpaidLog();
     }
 
-    public function canPause(): bool
-    {
-        return $this->allow_pause;
-    }
-
-    public function pause(): void
-    {
-        $this->paused_at = now();
-        $this->save();
-    }
-
-    public function isPaused(): bool
-    {
-        return $this->paused_at !== null;
-    }
-
-    public function resume(): void
-    {
-        $this->paused_at = null;
-        $this->save();
-    }
-
-    public function canCancel(): bool
-    {
-        return $this->allow_cancel;
-    }
-
-    public function cancel(): void
-    {
-        $this->status = Status::CANCELLED;
-        $this->save();
-    }
-
-    public function isCancelled(): bool
-    {
-        return $this->status === Status::CANCELLED;
-    }
-
-    public function end(): void
-    {
-        $this->status = Status::ENDED;
-        $this->save();
-    }
-
-    public function isEnded(): bool
-    {
-        return $this->status === Status::ENDED;
-    }
-
-    public function suspend(): void
-    {
-        $this->status = Status::SUSPENDED;
-        $this->save();
-    }
-
-    public function isSuspended(): bool
-    {
-        return $this->status === Status::SUSPENDED;
-    }
-
-    public function activate(): void
-    {
-        $this->status = Status::ACTIVE;
-        $this->save();
-    }
-
-    public function isActive(): bool
-    {
-        return $this->status === Status::ACTIVE;
-    }
-
     public function isDue(): bool
     {
-        return $this->fixed_day_of_month === now()->day;
+        $logs = $this->logs()
+            ->where('created_at', Carbon::today())->get()
+            ->where('status', PaymentStatus::PAID->value)
+            ->where('status', PaymentStatus::UNPAID->value)
+            ->first();
+
+        return $this->fixed_day_of_month === Carbon::now()->day && $logs === null;
     }
 
     public function isFixedDayChangeAllowed(): bool

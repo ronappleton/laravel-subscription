@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Appleton\Subscriptions\Listeners;
 
-use Appleton\Subscriptions\Events\SubscriptionSuspendedEvent;
 use Appleton\Subscriptions\Events\TransactionFailedEvent;
 use Appleton\Subscriptions\Models\Subscription;
-use Illuminate\Support\Collection;
 
 class TransactionFailedListener
 {
@@ -18,30 +16,25 @@ class TransactionFailedListener
         $this->subscription = $event->getSubscription();
 
         if ($this->maxRetries() === 0 || $this->maxedRetriesReached()) {
-            $this->subscription->setAttribute('status', 'suspended');
-            $this->subscription->save();
+            $this->subscription->suspend();
         }
     }
 
     protected function maxedRetriesReached(): bool
     {
-        return $this->getSubscriptionLogs($this->subscription)
-                ->map(function ($log) {
-                    return $log->getAttribute('result');
-                })->filter(fn(string $result) => $result === 'failed'
-                )->count() === $this->maxRetries();
+        return $this->getFailedSubscriptionLogCount() === $this->maxRetries();
     }
 
-    protected function getSubscriptionLogs(Subscription $subscription): Collection
+    protected function getFailedSubscriptionLogCount(): int
     {
-        return $subscription->logs()
-            ->orderBy('created_at', 'desc')
-            ->take($subscription->getAttribute('max_retries') + 1)
-            ->get();
+        return $this->subscription->failedPaymentsLastMonth()->count();
     }
 
     protected function maxRetries(): int
     {
-        return $this->subscription->getAttribute('max_retries');
+        /** @var int $maxRetries */
+        $maxRetries = $this->subscription->getAttribute('max_retries');
+
+        return $maxRetries;
     }
 }

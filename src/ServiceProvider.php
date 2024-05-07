@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Appleton\Subscriptions;
 
+use Appleton\Subscriptions\Events\TransactionFailedEvent;
+use Appleton\Subscriptions\Events\TransactionSuccessEvent;
+use Appleton\Subscriptions\Listeners\TransactionFailedListener;
+use Appleton\Subscriptions\Listeners\TransactionSuccessListener;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Container\BindingResolutionException;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
 class ServiceProvider extends BaseServiceProvider
@@ -22,10 +28,12 @@ class ServiceProvider extends BaseServiceProvider
             Console\Commands\ProcessSubscriptionsCommand::class,
         ]);
 
-        $this->bindEnums();
         $this->bindJobs();
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function boot(): void
     {
         $this->publishes([
@@ -38,18 +46,8 @@ class ServiceProvider extends BaseServiceProvider
         });
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-    }
 
-    /**
-     * Bind the enums to their interfaces.
-     *
-     * This is done to allow extension of the enums in the future.
-     */
-    private function bindEnums(): void
-    {
-        $this->app->bind(Enums\Contracts\Status::class, Enums\Status::class);
-        $this->app->bind(Enums\Contracts\Frequency::class, Enums\PaymentFrequency::class);
-        $this->app->bind(Enums\Contracts\PausePeriod::class, Enums\PausePeriod::class);
+        $this->listenForEvents();
     }
 
     private function bindJobs(): void
@@ -57,6 +55,19 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->bind(
             Jobs\Contracts\ProcessSubscriptionJob::class,
             Jobs\ProcessSubscriptionJob::class
+        );
+    }
+
+    private function listenForEvents(): void
+    {
+        Event::listen(
+            TransactionSuccessEvent::class,
+            TransactionSuccessListener::class,
+        );
+
+        Event::listen(
+            TransactionFailedEvent::class,
+            TransactionFailedListener::class,
         );
     }
 }

@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $deleted_at
  * @property Subscription $subscription
  * @method static Builder ageInDays(int $days)
- * @method static Builder status()
+ * @method static Builder status(PaymentStatus $status)
  */
 #[ObservedBy(SubscriptionLogObserver::class)]
 class SubscriptionLog extends Model

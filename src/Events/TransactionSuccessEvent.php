@@ -11,7 +11,7 @@ class TransactionSuccessEvent
 {
     use Dispatchable;
 
-    public function __construct(private Subscription $subscription)
+    public function __construct(private readonly Subscription $subscription)
     {
     }
 

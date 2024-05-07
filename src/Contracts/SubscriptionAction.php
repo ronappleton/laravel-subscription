@@ -8,5 +8,5 @@ use Appleton\Subscriptions\Models\Subscription;
 
 interface SubscriptionAction
 {
-    public function handle(Subscription $subscription): void;
+    public function handle(Subscription $subscription): bool;
 }

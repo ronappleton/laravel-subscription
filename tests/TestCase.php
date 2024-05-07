@@ -15,6 +15,8 @@ class TestCase extends BaseTestCase
     {
         return [
             ServiceProvider::class,
+            \Appleton\LaravelWallet\ServiceProvider::class,
+            \Appleton\TypedConfig\ServiceProvider::class,
         ];
     }
 

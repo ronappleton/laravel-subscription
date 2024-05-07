@@ -14,6 +14,7 @@ enum Status: string implements Values
     use HasRandom;
 
     case ACTIVE = 'active';
+    case INACTIVE = 'inactive';
     case CANCELLED = 'cancelled';
     case ENDED = 'ended';
     case SUSPENDED = 'suspended';

@@ -73,25 +73,55 @@ class ProcessorTest extends TestCase
 
         Queue::fake();
 
+        /** @var Subscription $subscription */
         $subscription = Subscription::factory()->create([
             'status' => Status::ACTIVE,
+            'retry_frequency_days' => 3,
             'max_retries' => 3,
+            'fixed_day_of_month' => 7,
         ]);
 
         SubscriptionLog::create([
             'subscription_id' => $subscription->id,
             'amount' => '10.00',
             'status' => PaymentStatus::UNPAID,
-            'created_at' => Carbon::parse('2020-12-10'),
-            'fixed_day_of_month' => 1,
+            'created_at' => Carbon::parse('2020-12-7'),
         ]);
-
-
 
         $processor = new Processor();
 
         $processor->processRetries();
 
-        Queue::assertPushed(ProcessSubscriptionJob::class, 3);
+        Queue::assertPushed(ProcessSubscriptionJob::class, 1);
+    }
+
+    public function testDelayedDispatch(): void
+    {
+        TestTime::freeze(Carbon::parse('2021-01-01'));
+
+        config(['subscriptions.dispatch_now' => false]);
+
+        Queue::fake();
+
+        Subscription::factory()->create([
+            'status' => Status::ACTIVE,
+            'fixed_day_of_month' => 1,
+        ]);
+
+        Subscription::factory()->create([
+            'status' => Status::ACTIVE,
+            'fixed_day_of_month' => 2,
+        ]);
+
+        Subscription::factory()->create([
+            'status' => Status::ACTIVE,
+            'fixed_day_of_month' => 3,
+        ]);
+
+        $processor = new Processor();
+
+        $processor->process();
+
+        Queue::assertPushed(ProcessSubscriptionJob::class, 1);
     }
 }

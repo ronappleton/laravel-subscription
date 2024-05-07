@@ -7,7 +7,7 @@ namespace Appleton\Subscriptions\Events;
 use Appleton\Subscriptions\Models\Subscription;
 use Illuminate\Foundation\Events\Dispatchable;
 
-class TransactionFailedEvent
+class SubscriptionResumedEvent
 {
     use Dispatchable;
 

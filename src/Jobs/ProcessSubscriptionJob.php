@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Appleton\Subscriptions\Jobs;
 
+use Appleton\Subscriptions\Events\TransactionFailedEvent;
+use Appleton\Subscriptions\Events\TransactionSuccessEvent;
+use Appleton\Subscriptions\Exceptions\SubscriptionAction;
 use Appleton\Subscriptions\Models\Subscription;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -20,8 +24,18 @@ class ProcessSubscriptionJob implements ProcessSubscriptionJobContract, ShouldQu
     {
     }
 
+    /**
+     * @throws SubscriptionAction
+     * @throws BindingResolutionException
+     */
     public function handle(): void
     {
-        $this->subscription->getAction()->handle($this->subscription);
+        event(
+            match($this->subscription->getAction()->handle($this->subscription))
+            {
+                false => new TransactionFailedEvent($this->subscription),
+                default => new TransactionSuccessEvent($this->subscription),
+            }
+        );
     }
 }

@@ -47,8 +47,14 @@ return new class extends Migration {
 
             $table->enum('status', Status::values());
 
-            $table->softDeletes();
+            $table->timestamp('activated_at')->nullable();
             $table->timestamp('paused_at')->nullable();
+            $table->timestamp('resumed_at')->nullable();
+            $table->timestamp('ended_at')->nullable();
+            $table->timestamp('suspended_at')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
+
+            $table->softDeletes();
             $table->timestamps();
         });
     }

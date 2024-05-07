@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Appleton\Subscriptions\Observers;
 
+use Appleton\Subscriptions\Enums\Status;
 use Appleton\Subscriptions\Events\SubscriptionActivatedEvent;
 use Appleton\Subscriptions\Events\SubscriptionCancelledEvent;
 use Appleton\Subscriptions\Events\SubscriptionCreatedEvent;
 use Appleton\Subscriptions\Events\SubscriptionEndedEvent;
 use Appleton\Subscriptions\Events\SubscriptionPausedEvent;
+use Appleton\Subscriptions\Events\SubscriptionResumedEvent;
 use Appleton\Subscriptions\Events\SubscriptionSuspendedEvent;
+use Appleton\Subscriptions\Events\SubscriptionUnsuspendedEvent;
 use Appleton\Subscriptions\Models\Subscription;
 
 class SubscriptionObserver
@@ -19,33 +22,29 @@ class SubscriptionObserver
         event(new SubscriptionCreatedEvent($subscription));
     }
 
-    public function updating(Subscription $subscription): bool
-    {
-        if (!$subscription->isDirty('status')) {
-            return true;
-        }
-
-        if ($subscription->status->value === 'paused' && !$subscription->canPause())
-        {
-            return false;
-        }
-
-
-        return true;
-    }
-
     public function updated(Subscription $subscription): void
     {
         if ($subscription->isDirty('status')) {
             event(
-                match ($subscription->status->value) {
-                    'suspended' => new SubscriptionSuspendedEvent($subscription),
-                    'cancelled' => new SubscriptionCancelledEvent($subscription),
-                    'ended' => new SubscriptionEndedEvent($subscription),
-                    'paused' => new SubscriptionPausedEvent($subscription),
-                    'active' => new SubscriptionActivatedEvent($subscription),
+                match ($subscription->status) {
+                    Status::SUSPENDED => new SubscriptionSuspendedEvent($subscription),
+                    Status::CANCELLED => new SubscriptionCancelledEvent($subscription),
+                    Status::ENDED => new SubscriptionEndedEvent($subscription),
+                    Status::PAUSED => new SubscriptionPausedEvent($subscription),
+                    Status::ACTIVE => $this->getActiveEvent($subscription),
+                    default => null,
                 }
             );
         }
+    }
+
+    private function getActiveEvent(
+        Subscription $subscription
+    ): SubscriptionActivatedEvent|SubscriptionResumedEvent|SubscriptionUnsuspendedEvent {
+        return match($subscription->getOriginal('status')) {
+            Status::PAUSED => new SubscriptionResumedEvent($subscription),
+            Status::SUSPENDED => new SubscriptionUnsuspendedEvent($subscription),
+            default => new SubscriptionActivatedEvent($subscription),
+        };
     }
 }

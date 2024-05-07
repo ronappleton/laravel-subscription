@@ -6,13 +6,16 @@ namespace Appleton\Subscriptions\Models;
 
 use Appleton\Subscriptions\Enums\TimePeriod;
 use Carbon\Carbon;
+use Database\Factories\SubscriptionProfileFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * @property-read int $id
- * @property-read string $uuid
+ * @property string $uuid
  * @property int|null $user_id
  *
  * @property string|null $name
@@ -46,6 +49,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class SubscriptionProfile extends Model
 {
     use SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -78,6 +82,7 @@ class SubscriptionProfile extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'uuid' => 'string',
         'name' => 'array',
         'description' => 'array',
         'amount' => 'float',
@@ -113,5 +118,19 @@ class SubscriptionProfile extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(config()->classString('subscriptions.user_model'));
+    }
+
+    protected static function newFactory(): SubscriptionProfileFactory
+    {
+        return SubscriptionProfileFactory::new();
+    }
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (SubscriptionProfile $profile) {
+            $profile->uuid ??= (string) Str::uuid();
+        });
     }
 }
