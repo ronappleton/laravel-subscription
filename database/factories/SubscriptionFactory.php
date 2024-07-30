@@ -34,10 +34,6 @@ class SubscriptionFactory extends Factory
         return [
             'uuid' => $this->faker->uuid(),
             'action_class' => $this->faker->word(),
-            'payer_id' => $this->faker->randomNumber(),
-            'payer_type' => $this->faker->word(),
-            'payee_id' => $this->faker->randomNumber(),
-            'payee_type' => $this->faker->word(),
             'currency' => $this->faker->word(),
             'amount' => 10.00,
 
