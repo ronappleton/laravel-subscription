@@ -17,7 +17,7 @@ class ServiceProvider extends BaseServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/subscriptions.php', 'subscriptions');
+        $this->mergeConfigFrom(__DIR__ . '/../config/subscriptions.php', 'subscriptions');
 
         $this->app->bind(
             Contracts\SubscriptionProcessor::class,
@@ -33,13 +33,7 @@ class ServiceProvider extends BaseServiceProvider
 
     public function boot(): void
     {
-        $this->publishes([
-            __DIR__.'/../config/subscriptions.php' => config_path('subscriptions.php'),
-        ], 'appleton-subscriptions-config');
-
-        $this->publishes([
-            __DIR__.'/../database/migrations' => database_path('migrations'),
-        ], 'appleton-subscriptions-migrations');
+        $this->handlePublishing();
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
@@ -68,5 +62,20 @@ class ServiceProvider extends BaseServiceProvider
             TransactionFailedEvent::class,
             TransactionFailedListener::class,
         );
+    }
+
+    private function handlePublishing(): void
+    {
+        if (!$this->app->runningInConsole()) {
+            return;
+        }
+
+        $this->publishes([
+            __DIR__ . '/../config/subscriptions.php' => config_path('subscriptions.php'),
+        ], 'appleton-subscriptions-config');
+
+        $this->publishes([
+            __DIR__ . '/../database/migrations' => database_path('migrations'),
+        ], 'appleton-subscriptions-migrations');
     }
 }
