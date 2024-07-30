@@ -31,15 +31,15 @@ class ServiceProvider extends BaseServiceProvider
         $this->bindJobs();
     }
 
-    /**
-     * @throws BindingResolutionException
-     */
     public function boot(): void
     {
         $this->publishes([
             __DIR__.'/../config/subscriptions.php' => config_path('subscriptions.php'),
+        ], 'appleton-subscriptions-config');
+
+        $this->publishes([
             __DIR__.'/../database/migrations' => database_path('migrations'),
-        ]);
+        ], 'appleton-subscriptions-migrations');
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
