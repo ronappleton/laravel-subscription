@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('subscription_logs', function (Blueprint $table) {
+        Schema::create(config()->string('subscriptions.table_names.subscription_logs'), function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
             $table->unsignedBigInteger('subscription_id');

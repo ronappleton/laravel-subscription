@@ -47,6 +47,11 @@ class SubscriptionLog extends Model
         'created_at',
     ];
 
+    public function getTable(): string
+    {
+        return config()->string('subscriptions.table_names.subscription_logs', parent::getTable());
+    }
+
     /**
      * @return array<string, string>
      */

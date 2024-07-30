@@ -76,6 +76,11 @@ class SubscriptionProfile extends Model
         'max_retries',
     ];
 
+    public function getTable(): string
+    {
+        return config()->string('subscriptions.table_names.subscription_profiles', parent::getTable());
+    }
+
     /**
      * The attributes that should be cast.
      *

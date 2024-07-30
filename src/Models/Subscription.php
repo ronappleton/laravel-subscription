@@ -109,6 +109,10 @@ class Subscription extends Model
         'activated_at',
     ];
 
+    public function getTable(): string
+    {
+        return config()->string('subscriptions.table_names.subscriptions', parent::getTable());
+    }
 
     /**
      * @return array<string, string>

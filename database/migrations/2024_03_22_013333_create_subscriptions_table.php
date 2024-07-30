@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('subscriptions', function (Blueprint $table) {
+        Schema::create(config()->string('subscriptions.table_names.subscriptions'), function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
             $table->string('action_class');
