@@ -32,7 +32,6 @@ class SubscriptionFactory extends Factory
     public function definition(): array
     {
         return [
-            'uuid' => $this->faker->uuid(),
             'action_class' => $this->faker->word(),
             'currency' => $this->faker->word(),
             'amount' => 10.00,
