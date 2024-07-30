@@ -11,9 +11,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create(config()->string('subscriptions.table_names.subscription_logs'), function (Blueprint $table) {
-            $table->id();
-            $table->uuid()->unique();
-            $table->unsignedBigInteger('subscription_id');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('subscription_id');
             $table->decimal('amount', 18, 10);
             $table->enum('status', PaymentStatus::values())->default('unpaid');
             $table->timestamp('created_at');

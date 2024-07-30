@@ -9,15 +9,15 @@ use Appleton\Subscriptions\Observers\SubscriptionLogObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * @property-read int $id
- * @property string $uuid
- * @property int $subscription_id
+ * @property-read string $id
+ * @property string $subscription_id
  * @property float $amount
  * @property PaymentStatus $status
  * @property Carbon $created_at
@@ -30,6 +30,7 @@ use Illuminate\Support\Str;
 class SubscriptionLog extends Model
 {
     use SoftDeletes;
+    use HasUuids;
 
     /**
      * @var bool
@@ -40,7 +41,6 @@ class SubscriptionLog extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'uuid',
         'subscription_id',
         'amount',
         'status',
@@ -89,14 +89,5 @@ class SubscriptionLog extends Model
     public function scopeStatus(Builder $query, PaymentStatus $status): Builder
     {
         return $query->where('status', $status->value);
-    }
-
-    protected static function boot(): void
-    {
-        parent::boot();
-
-        static::creating(function (SubscriptionLog $log): void {
-            $log->uuid ??= (string) Str::uuid();
-        });
     }
 }

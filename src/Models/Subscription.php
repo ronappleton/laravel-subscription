@@ -16,21 +16,20 @@ use Database\Factories\SubscriptionFactory;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @property-read int $id
- * @property string $uuid
+ * @property-read string $id
  * @property string $action_class
- * @property string $payer_type
- * @property int $payer_id
- * @property string $payee_type
- * @property int $payee_id
+ * @property string $payer_id
+ * @property string $payee_id
  * @property string $currency
  * @property float $amount
  *
@@ -70,16 +69,14 @@ class Subscription extends Model
     use SoftDeletes;
     use HasFactory;
     use HasStatus;
+    use HasUuids;
 
     /**
      * @var array<int, string>
      */
     protected $fillable = [
-        'uuid',
         'action_class',
-        'payer_type',
         'payer_id',
-        'payee_type',
         'payee_id',
         'currency',
         'amount',
@@ -166,19 +163,19 @@ class Subscription extends Model
     }
 
     /**
-     * @return MorphTo<Model, Subscription>
+     * @return BelongsTo<Model, Subscription>
      */
-    public function payer(): MorphTo
+    public function payer(): BelongsTo
     {
-        return $this->morphTo('payer');
+        return $this->belongsTo(config()->string('subscriptions.models.user'), 'payer');
     }
 
     /**
-     * @return MorphTo<Model, Subscription>
+     * @return BelongsTo<Model, Subscription>
      */
-    public function payee(): MorphTo
+    public function payee(): BelongsTo
     {
-        return $this->morphTo('payee');
+        return $this->belongsTo(config()->string('subscriptions.models.user'), 'payee');
     }
 
     /**

@@ -12,9 +12,8 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create(config()->string('subscriptions.table_names.subscription_profiles'), function (Blueprint $table) {
-            $table->id();
-            $table->uuid()->unique();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->nullable();
 
             $table->json('name')->nullable();
             $table->json('description')->nullable();

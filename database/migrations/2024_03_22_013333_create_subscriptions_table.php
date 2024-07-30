@@ -12,11 +12,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create(config()->string('subscriptions.table_names.subscriptions'), function (Blueprint $table) {
-            $table->id();
-            $table->uuid()->unique();
+            $table->uuid('id')->primary();
             $table->string('action_class');
-            $table->morphs('payer');
-            $table->morphs('payee');
+            $table->foreignUuid('payer_id')->constrained('users');
+            $table->foreignUuid('payee_id')->constrained('users');
             $table->string('currency');
             $table->decimal('amount', 18, 10);
 
