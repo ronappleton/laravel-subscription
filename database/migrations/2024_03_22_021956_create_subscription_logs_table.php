@@ -17,12 +17,6 @@ return new class extends Migration {
             $table->enum('status', PaymentStatus::values())->default('unpaid');
             $table->timestamp('created_at');
             $table->softDeletes();
-
-            $table->foreign('subscription_id')
-                ->references('id')
-                ->on('subscriptions')
-                ->restrictOnUpdate()
-                ->restrictOnDelete();
         });
     }
 
